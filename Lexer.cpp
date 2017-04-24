@@ -14,49 +14,50 @@
 #include "Lexer.h"
 
 Lexer::Lexer() {}
-Lexer::~Lexer() {}
+Lexer::~Lexer() {
+}
 
 //open file 
 void Lexer::read_file(string input) {
-    inputFile.open(input, ios::in);
+	inputFile.open(input, ios::in);
 
 }
-void Lexer::close_file() {    
-		inputFile.close();
-		delete [] tokenStream;
+void Lexer::close_file() {
+	inputFile.close();
 }
 
 void Lexer::addTokens() {
 	int token = space;
 	lineCount = 1;
-			
-	while (inputFile.good()) {
-		token = lex();
 
+		do {
+		token = lex();
+		if (token == eof) break;
 		if (token == space) continue; //skip if a space 
-		if (token == newLine) continue; 
+		if (token == newLine) continue;
+		
 
 		tokenStream[numTokens].lineNum = lineCount;
 		tokenStream[numTokens].type = token;
 		tokenStream[numTokens].value = lexme;
 
 		//if string, ident then it has a value 
-		if (token == stringType || token == ident || token == integer || token == floatType)
+		if (token == stringType || token == ident || token == integer || token == floatInt)
 			tokenStream[numTokens].hasVal = true;
 		numTokens++;
 		//cout << "lexeme: \"" << lexme << "\"   token: " << tokenType(token) << endl;
-	} 
+		} while (inputFile.good());
 }
 
 void Lexer::rewindChar() {
-    //put back character you read when checking
-    //got error token so need to reread char
+	//put back character you read when checking
+	//got error token so need to reread char
 	inputFile.unget();
 }
 
 void Lexer::getChar()
 {
-    //gets acharacters from the file 
+	//gets acharacters from the file 
 	nextChar = inputFile.get();
 
 	charClass = error;
@@ -66,25 +67,26 @@ void Lexer::getChar()
 
 	if (nextChar > 47 && nextChar <58)
 		charClass = digit;
-	if(nextChar == '_')
-	    charClass = underScore; 
-	
-	if (nextChar == '(' || nextChar == ')' || nextChar == '{' ||nextChar == '}' || nextChar == '[' || nextChar == ']' || nextChar == '<' || nextChar == '>')
-	    charClass = pdelimiter;
-	
+	if (nextChar == '_')
+		charClass = underScore;
+
+	if (nextChar == '(' || nextChar == ')' || nextChar == '{' || nextChar == '}' || nextChar == '[' || nextChar == ']' || nextChar == '<' || nextChar == '>')
+		charClass = pdelimiter;
+
 	if (nextChar == ',' || nextChar == ';' || nextChar == '!')
-	    charClass = udelimiter;
-	
+		charClass = udelimiter;
+
 	if (nextChar == '*' || nextChar == '^' || nextChar == ':' || nextChar == '.' || nextChar == '=' || nextChar == '-' || nextChar == '+' || nextChar == '/')
-	    charClass = uops;
-	
-	if(nextChar == '"')
-	    charClass = quote;
+		charClass = uops;
+
+	if (nextChar == '"')
+		charClass = quote;
 
 	if (nextChar == ' ') charClass = space;
-	if (nextChar == EOF) charClass = eof;
+	if (nextChar == EOF) charClass = NULL;
+	if (nextChar == '\t') charClass = space; 
 	if (nextChar == '\n') { lineCount++; charClass = newLine; } //keeps track of what line it was on
-    
+
 }
 
 void Lexer::addChar()
@@ -96,44 +98,46 @@ int Lexer::lex()
 {
 
 	lexme = "";
-	
-    //reads a character 
+
+	//reads a character 
 	getChar();  //get the first char
 
-    //start checking what kind of character it is 
-	if (charClass == space) { return space; }
+	//start checking what kind of character it is 
+	if (charClass == space) { return space;}
 	if (charClass == error) { addChar(); return error; }
-	if (charClass == EOF) { addChar(); return eof; }
+	if (charClass == NULL) { return eof; }
 	if (charClass == newLine) { return newLine; }
 
 	switch (charClass) {
-	  
-	 //literal strings 
+
+		//literal strings 
 	case quote:
-	    getChar();
-        while(charClass != quote) {
-            addChar();
-            getChar();
-        } 
-        return stringType; 
-	break;
-	
-	//id with underscore at the front
+		getChar();
+		while (charClass != quote) {
+			addChar();
+			getChar();
+			if (charClass == eof)
+				return error; 
+		}
+		return stringType;
+		break;
+
+		//id with underscore at the front
 	case underScore:
-	    //string starts with underscore
-	    getChar();
-	    if(charClass != letter || charClass != digit || charClass != underScore) {
-	        //not a valid ident 
-	        rewindChar(); 
-	        return error; 
-	    }
-	    while (charClass == letter || charClass == digit || charClass == underScore)
+		//string starts with underscore
+		getChar();
+		if (charClass != letter || charClass != digit || charClass != underScore) {
+			//not a valid ident 
+			rewindChar();
+			return error;
+		}
+		while (charClass == letter || charClass == digit || charClass == underScore)
 		{
 			addChar();
 			getChar();
 		}
-		return ident; 
-	break;
+		return ident;
+		break;
 	case letter:
 		//Get the word
 		while (charClass == letter || charClass == digit || charClass == underScore)
@@ -141,242 +145,244 @@ int Lexer::lex()
 			addChar();
 			getChar();
 		}
-		
+
 		//check if keyword
-		if(lexme == "prog") 
-			{
-			    return kwdprog;
-			}
-			else if( lexme == "main" )
-			{
-			    return kwdmain;
-			}
-			else if( lexme == "fcn" )
-			{
-			    return kwdfcn;
-			}
-			else if( lexme == "class" )
-			{
-			    return kwdclass;
-			}
-			else if( lexme == "float" )
-			{
-			    return kwdfloat;
-			}
-			else if( lexme == "int" )
-			{
-			    return kwdint;
-			}
-			else if( lexme == "string" )
-			{
-			    return kwdstring;
-			}
-			else if( lexme == "if" )
-			{
-			    return kwdif;
-			}
-			else if( lexme == "elseif" )
-			{
-			    return kwdelseif;
-			}
-			else if( lexme == "else" )
-			{
-			    return kwdelse;
-			}
-			else if( lexme == "while" )
-			{
-			    return kwdwhile;
-			}
-			else if( lexme == "input" )
-			{
-			    return kwdinput;
-			}
-			else if( lexme == "print" )
-			{
-			    return kwdprint;
-			}
-			else if( lexme == "new" )
-			{
-			    return kwdreturn;
-			}
-			else if( lexme == "return" )
-			{
-			    return kwdreturn;
-			}
+		if (lexme == "prog")
+		{
+			return kwdprog;
+		}
+		else if (lexme == "main")
+		{
+			return kwdmain;
+		}
+		else if (lexme == "fcn")
+		{
+			return kwdfcn;
+		}
+		else if (lexme == "class")
+		{
+			return kwdclass;
+		}
+		else if (lexme == "float")
+		{
+			return kwdfloat;
+		}
+		else if (lexme == "int")
+		{
+			return kwdint;
+		}
+		else if (lexme == "string")
+		{
+			return kwdstring;
+		}
+		else if (lexme == "if")
+		{
+			return kwdif;
+		}
+		else if (lexme == "elseif")
+		{
+			return kwdelseif;
+		}
+		else if (lexme == "else")
+		{
+			return kwdelse;
+		}
+		else if (lexme == "while")
+		{
+			return kwdwhile;
+		}
+		else if (lexme == "input")
+		{
+			return kwdinput;
+		}
+		else if (lexme == "print")
+		{
+			return kwdprint;
+		}
+		else if (lexme == "new")
+		{
+			return kwdreturn;
+		}
+		else if (lexme == "return")
+		{
+			return kwdreturn;
+		}
 		//if not a keyword return ident
-	    return ident;
+		return ident;
 		break;
 	case digit:
 		while (charClass == digit) {
 			addChar();
 			getChar();
 		}
-		
+
 		//check if floating point 
 		if (nextChar == '.') // is a floating point 
 		{
-		    getChar();
-		    if (charClass != digit) {
-		        rewindChar(); //did not follow a number then return integer and retoken dot 
-		        return integer; 
-		    }
-		    //get the dot again
-		    rewindChar(); getChar();
-		    do {
-    			addChar();
-    			getChar();
-		    } while(charClass == digit);
-		    return floatInt;
+			getChar();
+			if (charClass != digit) {
+				rewindChar(); //did not follow a number then return integer and retoken dot 
+				return integer;
+			}
+			//get the dot again
+			rewindChar(); rewindChar(); getChar();
+
+			do {
+				addChar(); 
+				getChar();
+			} while (charClass == digit);
+			return floatInt;
 		}
-		
+
 		return integer;
 		break;
-	
-	case uops:
-			addChar(); 
-		
-		if(lexme == "*")
-			{
-			    return aster;
-			}
-			else if( lexme == "^" )
-			{
-			    return caret;
-			}
-			else if( lexme == ":" )
-			{
-			    return colon;
-			}
-			else if( lexme == "." )
-			{
-			    return dot;
-			}
-			else if( lexme == "=" ) //special case '=='
-			{
-			    getChar(); 
-				if (nextChar == '='){
-			        addChar();
-			        return opeq; 
-			    }
-			    
-			    rewindChar(); //go back
-			    return idType::equal;
-			}
-			else if( lexme == "-" ) //special case '->'
-			{
-				getChar();
-				if (nextChar == '>'){
-					addChar();
-					return oparrow;
-				}
 
-				rewindChar(); //go back
-				return idType::minus;	    	    		
+	case uops:
+		addChar();
+
+		if (lexme == "*")
+		{
+			return aster;
+		}
+		else if (lexme == "^")
+		{
+			return caret;
+		}
+		else if (lexme == ":")
+		{
+			return colon;
+		}
+		else if (lexme == ".")
+		{
+			return dot;
+		}
+		else if (lexme == "=") //special case '=='
+		{
+			getChar();
+			if (nextChar == '='){
+				addChar();
+				return opeq;
 			}
-			else if( lexme == "+" )
-			{
-			    return idType::plus;
+
+			rewindChar(); //go back
+			return idType::equal;
+		}
+		else if (lexme == "-") //special case '->'
+		{
+			getChar();
+			if (nextChar == '>'){
+				addChar();
+				return oparrow;
 			}
-			else if( lexme == "/" ) //check if '//' for comments
-			{
-			    getChar();
-				if (nextChar == '/'){
-					while (nextChar != '\n') {
-					    getChar(); //ignore all till newline
-					}
-					return space;
-				}
-				rewindChar(); //go back
-			    return slash;
+
+			rewindChar(); //go back
+			return idType::minus;
+		}
+		else if (lexme == "+")
+		{
+			return idType::plus;
+		}
+		else if (lexme == "/") //check if '//' for comments
+		{
+			getChar();
+			if (nextChar == '/') {
+				do {
+					getChar(); 
+				} while (nextChar != '\n');
+				return space; 
 			}
+
+			rewindChar(); //go back
+			return slash;
+		}
 		return error; //failed all the other symbols 
 		break;
-		
-	case udelimiter:
-			addChar(); 
-			
-		if(lexme == "," )
-			{
-			    return comma;
-			}
-			else if( lexme == ";" )
-			{
-			    return semi;
-			}
-			else if (lexme == "!") { //special case '!='
-				getChar();
-				if (nextChar == '='){
-					addChar();
-					return opne;
-				}
 
-				rewindChar(); //go back
+	case udelimiter:
+		addChar();
+		if (lexme == ",")
+		{
+			return comma;
+		}
+		else if (lexme == ";")
+		{
+			return semi;
+		}
+		else if (lexme == "!") { //special case '!='
+			getChar();
+			if (nextChar == '='){
+				addChar();
 				return opne;
 			}
-		return error;
+
+			rewindChar(); //go back
+			return opne;
+		}
+		return udelimiter;
 		break;
-		
+
 	case pdelimiter:
-			addChar();
+		addChar();
+		if (lexme == "(")
+		{
+			return parens1;
+		}
+		else if (lexme == ")")
+		{
+			return parens2;
+		}
+		else if (lexme == "{")
+		{
+			return bracket1;
+		}
+		else if (lexme == "}")
+		{
+			return bracket2;
+		}
+		else if (lexme == "[")
+		{
+			return brace1;
+		}
+		else if (lexme == "]")
+		{
+			return brace2;
+		}
+		else if (lexme == "<") //special case '<=' and '<<'
+		{
 			getChar();
-		
-		if(lexme == "(" )
-			{
-			    return parens1;
+			if (nextChar == '='){
+				addChar();
+				return ople;
 			}
-			else if( lexme == ")" )
-			{
-			    return parens2;
+			else if (nextChar == '<') {
+				addChar();
+				return opshl;
 			}
-			else if( lexme == "{" )
-			{
-			    return bracket1;
-			}
-			else if( lexme == "}" )
-			{
-			    return bracket2;
-			}
-			else if( lexme == "[" )
-			{
-			    return brace1;
-			}
-			else if( lexme == "]" )
-			{
-			    return brace2;
-			}
-			else if( lexme == "<" ) //special case '<=' and '<<'
-			{
-			    getChar(); 
-			    if (nextChar == '='){
-			        addChar();
-			        return ople; 
-			    }
-				else if (nextChar == '<') {
-			        addChar(); 
-			        return opshl;
-			    }
-			     
-			    rewindChar(); //go back
-			    return angle1;
 
-			}
-			else if( lexme == ">" ) //special case '>=' and '>>'
-			{
-				getChar();
-				if (nextChar == '='){
-					addChar();
-					return opge;
-				}
-				else if (nextChar == '<') {
-					addChar();
-					return opshr;
-				}
+			rewindChar(); //go back
+			return angle1;
 
-				rewindChar(); //go back
-				return angle2;
+		}
+		else if (lexme == ">") //special case '>=' and '>>'
+		{
+			getChar();
+			if (nextChar == '='){
+				addChar();
+				return opge;
 			}
-		return error;
+			else if (nextChar == '<') {
+				addChar();
+				return opshr;
+			}
+
+			rewindChar(); //go back
+			return angle2;
+		}
+		return pdelimiter;
 		break;
+
+	default: 
+		return error; 
 	}
 
 }
@@ -386,9 +392,9 @@ int Lexer::lex()
 void Lexer::print_tokens(){
 	cout << "(:lang A3 \n";
 	for (int i = 0; i < numTokens; i++) {
-		cout << "(:token " << tokenStream[i].lineNum << " " << tokenType(tokenStream[i].type) << " " ;
-		if (tokenStream[i].hasVal != NULL) //if token has a value pair  
-			cout << tokenStream[i].value << " ";
+		cout << "(:token " << tokenStream[i].lineNum << " " << tokenType(tokenStream[i].type) << " ";
+		if (tokenStream[i].hasVal == true) //if token has a value pair  
+			cout << "str: \""<< tokenStream[i].value << "\" ";
 		cout << ")" << endl;
 	}
 }
